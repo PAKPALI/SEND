@@ -21,12 +21,16 @@ class KprimeMessagingService
         }
 
         try {
+            $providerPhone = $channel === 'sms'
+                ? $this->normalizeSmsPhone($phone, $countryCode)
+                : $phone;
+
             $payload = $channel === 'sms'
                 ? [
                     'sender' => $config['sender'],
                     'sender_id' => $config['sender_id'],
                     'country' => strtoupper($countryCode),
-                    'phone_number' => $phone,
+                    'phone_number' => $providerPhone,
                     'message' => $message,
                     'response_url' => $config['response_url'],
                 ]
@@ -61,5 +65,20 @@ class KprimeMessagingService
             Log::warning('KPrime message request failed', ['channel' => $channel, 'error' => $exception->getMessage()]);
             return ['status' => false, 'message' => 'Le fournisseur est momentanément indisponible.'];
         }
+    }
+
+    private function normalizeSmsPhone(string $phone, string $countryCode): string
+    {
+        $digits = preg_replace('/\D+/', '', trim($phone)) ?: '';
+
+        if (str_starts_with($digits, '00')) {
+            $digits = substr($digits, 2);
+        }
+
+        if (strtoupper($countryCode) === 'TG' && str_starts_with($digits, '228') && strlen($digits) > 8) {
+            $digits = substr($digits, 3);
+        }
+
+        return $digits;
     }
 }
